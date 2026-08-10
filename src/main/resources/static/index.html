@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI QA Assistant</title>
+    <style>
+        :root {
+            --primary: #003366;
+            --primary-light: #004a99;
+            --accent: #c8102e;
+            --bg: #f5f7fa;
+            --surface: #ffffff;
+            --text: #1a1a2e;
+            --text-muted: #5a5a7a;
+            --border: #e0e4ea;
+            --success: #16a34a;
+            --error: #dc2626;
+            --radius: 8px;
+        }
+
+        [data-theme="dark"] {
+            --primary: #4da3ff;
+            --primary-light: #6bb5ff;
+            --accent: #ff4d6a;
+            --bg: #0f1419;
+            --surface: #1a2332;
+            --text: #e8ecf0;
+            --text-muted: #8899aa;
+            --border: #2a3a4a;
+            --success: #4ade80;
+            --error: #f87171;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: var(--primary);
+            color: #fff;
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header h1 { font-size: 1.4rem; font-weight: 600; }
+
+        .theme-toggle {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: #fff;
+            padding: 0.4rem 0.8rem;
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .theme-toggle:hover { background: rgba(255,255,255,0.25); }
+
+        .container { max-width: 900px; margin: 2rem auto; padding: 0 1.5rem; }
+
+        .tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 1.5rem;
+        }
+
+        .tab {
+            padding: 0.75rem 1.25rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: color 0.2s, border-color 0.2s;
+            background: none;
+            border-top: none;
+            border-left: none;
+            border-right: none;
+        }
+
+        .tab:hover { color: var(--text); }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+        }
+
+        .form-group { margin-bottom: 1rem; }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 0.35rem;
+            color: var(--text);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.6rem 0.8rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 0.9rem;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .form-group textarea { min-height: 120px; resize: vertical; font-family: monospace; }
+
+        .btn {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 0.65rem 1.5rem;
+            border-radius: var(--radius);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn:hover { background: var(--primary-light); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .result-area {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-family: monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            max-height: 500px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .result-area.visible { display: block; }
+
+        .loading {
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .loading.visible { display: flex; }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .error-msg {
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            background: color-mix(in srgb, var(--error) 10%, transparent);
+            border: 1px solid var(--error);
+            border-radius: var(--radius);
+            color: var(--error);
+            font-size: 0.85rem;
+            display: none;
+        }
+
+        .error-msg.visible { display: block; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>AI QA Assistant</h1>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">Dark Mode</button>
+    </div>
+
+    <div class="container">
+        <div class="tabs" role="tablist">
+            <button class="tab active" role="tab" aria-selected="true" data-tab="api-tests">Generate API Tests</button>
+            <button class="tab" role="tab" aria-selected="false" data-tab="test-data">Generate Test Data</button>
+            <button class="tab" role="tab" aria-selected="false" data-tab="restassured">Generate RestAssured Code</button>
+            <button class="tab" role="tab" aria-selected="false" data-tab="review">Review Tests</button>
+        </div>
+
+        <!-- Generate API Tests Panel -->
+        <div class="panel active" id="panel-api-tests" role="tabpanel">
+            <div class="card">
+                <form id="form-api-tests" novalidate>
+                    <div class="form-group">
+                        <label for="api-endpoint">API Endpoint</label>
+                        <input type="text" id="api-endpoint" placeholder="/api/users" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="api-method">HTTP Method</label>
+                        <select id="api-method">
+                            <option value="POST">POST</option>
+                            <option value="GET">GET</option>
+                            <option value="PUT">PUT</option>
+                            <option value="PATCH">PATCH</option>
+                            <option value="DELETE">DELETE</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="api-schema">Request Body Schema (JSON)</label>
+                        <textarea id="api-schema" placeholder='{"email": "string", "password": "string"}'></textarea>
+                    </div>
+                    <button type="submit" class="btn">Generate Test Cases</button>
+                </form>
+                <div class="loading" id="loading-api-tests"><div class="spinner"></div><span>Generating test cases...</span></div>
+                <div class="error-msg" id="error-api-tests"></div>
+                <div class="result-area" id="result-api-tests"></div>
+            </div>
+        </div>
+
+        <!-- Generate Test Data Panel -->
+        <div class="panel" id="panel-test-data" role="tabpanel">
+            <div class="card">
+                <form id="form-test-data" novalidate>
+                    <div class="form-group">
+                        <label for="data-schema">Data Schema (JSON)</label>
+                        <textarea id="data-schema" placeholder='{"name": "string", "age": "integer", "email": "string"}'></textarea>
+                    </div>
+                    <button type="submit" class="btn">Generate Test Data</button>
+                </form>
+                <div class="loading" id="loading-test-data"><div class="spinner"></div><span>Generating test data...</span></div>
+                <div class="error-msg" id="error-test-data"></div>
+                <div class="result-area" id="result-test-data"></div>
+            </div>
+        </div>
+
+        <!-- Generate RestAssured Code Panel -->
+        <div class="panel" id="panel-restassured" role="tabpanel">
+            <div class="card">
+                <form id="form-restassured" novalidate>
+                    <div class="form-group">
+                        <label for="ra-endpoint">API Endpoint</label>
+                        <input type="text" id="ra-endpoint" placeholder="/api/users" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="ra-method">HTTP Method</label>
+                        <select id="ra-method">
+                            <option value="POST">POST</option>
+                            <option value="GET">GET</option>
+                            <option value="PUT">PUT</option>
+                            <option value="PATCH">PATCH</option>
+                            <option value="DELETE">DELETE</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="ra-schema">Request Body Schema (JSON)</label>
+                        <textarea id="ra-schema" placeholder='{"email": "string", "password": "string"}'></textarea>
+                    </div>
+                    <button type="submit" class="btn">Generate RestAssured Tests</button>
+                </form>
+                <div class="loading" id="loading-restassured"><div class="spinner"></div><span>Generating RestAssured code...</span></div>
+                <div class="error-msg" id="error-restassured"></div>
+                <div class="result-area" id="result-restassured"></div>
+            </div>
+        </div>
+
+        <!-- Review Tests Panel -->
+        <div class="panel" id="panel-review" role="tabpanel">
+            <div class="card">
+                <form id="form-review" novalidate>
+                    <div class="form-group">
+                        <label for="review-framework">Test Framework</label>
+                        <select id="review-framework">
+                            <option value="JUnit">JUnit</option>
+                            <option value="TestNG">TestNG</option>
+                            <option value="RestAssured">RestAssured</option>
+                            <option value="pytest">pytest</option>
+                            <option value="Jest">Jest</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="review-endpoint">Endpoint Under Test</label>
+                        <input type="text" id="review-endpoint" placeholder="/api/users" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="review-code">Paste Your Test Code</label>
+                        <textarea id="review-code" placeholder="Paste your test code here..." style="min-height: 200px;"></textarea>
+                    </div>
+                    <button type="submit" class="btn">Review Tests</button>
+                </form>
+                <div class="loading" id="loading-review"><div class="spinner"></div><span>Reviewing tests...</span></div>
+                <div class="error-msg" id="error-review"></div>
+                <div class="result-area" id="result-review"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Theme toggle
+        const themeToggle = document.getElementById('themeToggle');
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            themeToggle.textContent = 'Light Mode';
+        }
+
+        themeToggle.addEventListener('click', function() {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            if (isDark) {
+                document.documentElement.removeAttribute('data-theme');
+                themeToggle.textContent = 'Dark Mode';
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                themeToggle.textContent = 'Light Mode';
+                localStorage.setItem('theme', 'dark');
+            }
+        });
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(function(tab) {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.tab').forEach(function(t) {
+                    t.classList.remove('active');
+                    t.setAttribute('aria-selected', 'false');
+                });
+                document.querySelectorAll('.panel').forEach(function(p) {
+                    p.classList.remove('active');
+                });
+                tab.classList.add('active');
+                tab.setAttribute('aria-selected', 'true');
+                var panelId = 'panel-' + tab.getAttribute('data-tab');
+                document.getElementById(panelId).classList.add('active');
+            });
+        });
+
+        // Helper functions
+        function showLoading(section) {
+            document.getElementById('loading-' + section).classList.add('visible');
+            document.getElementById('error-' + section).classList.remove('visible');
+            document.getElementById('result-' + section).classList.remove('visible');
+        }
+
+        function hideLoading(section) {
+            document.getElementById('loading-' + section).classList.remove('visible');
+        }
+
+        function showError(section, message) {
+            var el = document.getElementById('error-' + section);
+            el.textContent = message;
+            el.classList.add('visible');
+        }
+
+        function showResult(section, data) {
+            var el = document.getElementById('result-' + section);
+            el.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+            el.classList.add('visible');
+        }
+
+        function parseJsonSafe(text, fieldName) {
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                throw new Error(fieldName + ' must be valid JSON');
+            }
+        }
+
+        async function submitForm(url, body, section) {
+            showLoading(section);
+            try {
+                var response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                var result = await response.json();
+
+                hideLoading(section);
+
+                if (!response.ok || !result.success) {
+                    showError(section, result.message || 'Request failed with status ' + response.status);
+                    return;
+                }
+
+                showResult(section, result.data);
+            } catch (err) {
+                hideLoading(section);
+                showError(section, err.message || 'Network error');
+            }
+        }
+
+        // Form: Generate API Tests
+        document.getElementById('form-api-tests').addEventListener('submit', function(e) {
+            e.preventDefault();
+            var endpoint = document.getElementById('api-endpoint').value.trim();
+            var method = document.getElementById('api-method').value;
+            var schemaText = document.getElementById('api-schema').value.trim();
+
+            if (!endpoint) { showError('api-tests', 'Endpoint is required'); return; }
+
+            var schema = {};
+            if (schemaText) {
+                try { schema = parseJsonSafe(schemaText, 'Schema'); }
+                catch (err) { showError('api-tests', err.message); return; }
+            }
+
+            submitForm('/generate/api-tests', { endpoint: endpoint, method: method, schema: schema }, 'api-tests');
+        });
+
+        // Form: Generate Test Data
+        document.getElementById('form-test-data').addEventListener('submit', function(e) {
+            e.preventDefault();
+            var schemaText = document.getElementById('data-schema').value.trim();
+
+            if (!schemaText) { showError('test-data', 'Schema is required'); return; }
+
+            var schema;
+            try { schema = parseJsonSafe(schemaText, 'Schema'); }
+            catch (err) { showError('test-data', err.message); return; }
+
+            submitForm('/generate/test-data', { schema: schema }, 'test-data');
+        });
+
+        // Form: Generate RestAssured Tests
+        document.getElementById('form-restassured').addEventListener('submit', function(e) {
+            e.preventDefault();
+            var endpoint = document.getElementById('ra-endpoint').value.trim();
+            var method = document.getElementById('ra-method').value;
+            var schemaText = document.getElementById('ra-schema').value.trim();
+
+            if (!endpoint) { showError('restassured', 'Endpoint is required'); return; }
+
+            var schema = {};
+            if (schemaText) {
+                try { schema = parseJsonSafe(schemaText, 'Schema'); }
+                catch (err) { showError('restassured', err.message); return; }
+            }
+
+            submitForm('/generate/restassured-tests', { endpoint: endpoint, method: method, schema: schema }, 'restassured');
+        });
+
+        // Form: Review Tests
+        document.getElementById('form-review').addEventListener('submit', function(e) {
+            e.preventDefault();
+            var framework = document.getElementById('review-framework').value;
+            var endpoint = document.getElementById('review-endpoint').value.trim();
+            var testCode = document.getElementById('review-code').value.trim();
+
+            if (!endpoint) { showError('review', 'Endpoint is required'); return; }
+            if (!testCode) { showError('review', 'Test code is required'); return; }
+
+            submitForm('/review/tests', { framework: framework, endpoint: endpoint, testCode: testCode }, 'review');
+        });
+    </script>
+</body>
+</html>
